@@ -1,33 +1,29 @@
 import logging
 from pathlib import Path
-from typing import Optional, Sequence, Type
-
+from typing import (
+        Any,
+        Optional,
+        Sequence,
+        Type,
+        Dict,
+        )
 import jinja2
 from jinja2 import FileSystemLoader, select_autoescape
+from more-itertools import flatten
 
 from .page import Page
 
 
 class Engine:
-    """
-    This is the engine that is builds your static site.
-    Use `Engine.run()` to output the files to the designated output path.
-
-    Attributes:
-        extension : str
-            the extension to use in the rendered files
-            default '.html'
-        environment : Any
-            the environment renderer that you want to use. You can use any environment that you like. Environments
-            should support a `get_template` and `render`
-
-    Todos:
-        * Create default template
-        * Method to build template directory
-    """
-
-    extension: str = ".html"
-    template_path = "templates"
+    """Engine creates decorators for writing HTML"""
+    strict: bool = False
+    output_path: str = 'output'
+    static_path: str = 'static'
+    template_path: str = 'templates'
+    SITE_VARIABLES: Dict[str, str] = {
+            'SITE_TITLE': 'Untitled Site',
+            'SITE_URL': 'https://example.com',
+            }
 
     @property
     def environment(self):
@@ -46,18 +42,27 @@ class Engine:
         """
         return self.environment.get_template(template)
 
-    def render(self, page: Type[Page], **kwargs):
-        """
-        generates the rendered HTML from from environment
 
-        Parameters:
-            page : Page
-                the page object to render into html
-        """
-        if page.template:
-            template = self.get_template(page.template)
+    def render_collection(
+            self,
+            collection: typing.Type[Collection],
+    ) -> None:
+        """iterate through pages in the collection and generate HTML for each page"""
 
-            return template.render(**kwargs)
+        for page in collection().pages:
+            self.render_page(page, **SITE_VARIABLES)
 
+    def render_page(
+            self,
+            page: typing.Type[Page],
+    ) -> None:
+        """generate HTML for the given page"""
+
+        if getattr(page, 'template', None):
+            content = self.get_template(page.template).render(**kwargs)
         else:
-            return page.content
+            content = page.content
+
+        for route in getattr(page, routes, ['']):
+            path = Path(self.output_path) / route / page.slug
+            file_obj = path.write_text(content)

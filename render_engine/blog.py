@@ -47,6 +47,7 @@ class BlogPost(Page):
 
         super().__init__(**kwargs)
 
+
         date_published = more_itertools.first_true(
             (
                 getattr(self, "date_published", None),

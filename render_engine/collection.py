@@ -77,6 +77,8 @@ class Collection:
     title: typing.Optional[str] = ""
     feeds: typing.List[typing.Optional[RSSFeed]] = []
     markdown_extras = ["fenced-code-blocks", "footnotes"]
+    image_optimizer = None
+    image_optimizations: typing.List[str] = []
 
     def __init__(self):
         if not self.title:
@@ -109,6 +111,8 @@ class Collection:
                     )
                     page.routes = self.routes
                     page.template = self.template
+                    page.image_optimizations = self.image_optimizations
+                    page.image_optimizer = self.image_optimizer
                     _pages.append(page)
 
         return _pages
@@ -183,3 +187,147 @@ class Collection:
                 subcollections[_subcollection].append(SubCollection())
 
         return subcollections
+
+    def register_feed(self, feed, collection: Collection) -> None:
+        """Create a Page object that is an RSS feed and add it to self.routes
+
+        Parameters
+        ----------
+        feed: RSSFeedEngine
+            the type of feed to generate
+        collection: Collection
+            the collection to
+
+        Returns
+        -------
+        None
+        """
+
+        extension = self.rss_engine.extension
+        _feed = feed
+        _feed.slug = collection.slug
+        _feed.title = f"{self.SITE_TITLE} - {_feed.title}"
+        _feed.link = f"{self.SITE_URL}/{_feed.slug}{extension}"
+        self.routes.append(_feed)
+
+    def register_route(self, cls) -> None:
+        route = cls()
+        self.routes.append(route)
+
+    def _remove_output_path(self):
+        if self.output_path.exists():
+            return shutil.rmtree(self.output_path)
+
+    def _render_output(self, page):
+        """Writes the page to a file"""
+        engine = page.engine if page.engine else self.default_engine
+        template_attrs = self.get_public_attributes(page)
+        content = engine.render(page, **template_attrs)
+        route = self.output_path.joinpath(page.routes[0].strip("/"))
+        route.mkdir(exist_ok=True)
+        filename = Path(page.slug).with_suffix(engine.extension)
+        filepath = route.joinpath(filename)
+        filepath.write_text(content)
+        route_count = len(page.routes)
+
+        if route_count > 1:
+
+            # create a directory and path for each alternate route
+            for new_route in page.routes[1:]:
+                new_route = self.output_path.joinpath(new_route.strip("/"))
+                new_route.mkdir(exist_ok=True)
+                new_filepath = new_route.joinpath(filename)
+                shutil.copy(filepath, new_filepath)
+
+    def _render_subcollections(self):
+        """Generate subcollection pages to be added to routes"""
+        for _, collection in self.collections.items():
+
+            if collection.subcollections:
+
+                for subcollection_group in collection.get_subcollections():
+                    _subcollection_group = collection.get_subcollections()[
+                        subcollection_group
+                    ]
+                    sorted_group = sorted(
+                        _subcollection_group,
+                        key=lambda x: (len(x.pages), x.title),
+                        reverse=True,
+                    )
+
+                    for subcollection in sorted_group:
+
+                        self.subcollections[subcollection_group] = sorted_group
+
+                        for archive in subcollection.archive:
+                            self.routes.append(archive)
+
+    def render(self, dry_run: bool = False, strict: bool = False) -> None:
+        # removes the output path is strict is set
+        if self.strict or strict:
+            self._remove_output_path
+
+        # create an output_path if it doesn't exist
+        self.output_path.mkdir(exist_ok=True)
+
+        # copy a defined static path into output path
+        if Path(self.static_path).is_dir():
+            shutil.copytree(
+                self.static_path,
+                self.output_path.joinpath(self.static_path),
+                dirs_exist_ok=True,
+            )
+
+        # render registered subcollections
+        self._render_subcollections()
+        page_count = len(self.routes)
+
+        with Bar(
+            f"Rendering {page_count} Pages",
+            max=page_count,
+            suffix="%(percent).1f%% - %(elapsed_td)s",
+        ) as bar:
+
+            for page in self.routes:
+                suffix = "%(percent).1f%% - %(elapsed_td)s"
+                bar.suffix = suffix + f" ({page.title})"
+
+                self._render_output(page)
+
+                bar.next()
+
+        if self.search:
+            search_fields = {
+                "title": {
+                    "type": "text",
+                },
+                "content": {
+                    "type": "text",
+                },
+                "slug": {
+                    "type": "text",
+                },
+                "date_published": {
+                    "type": "date",
+                },
+                "date_modified": {
+                    "type": "date",
+                },
+                "tags": {
+                    "type": "text",
+                    "default": [""],
+                },
+                "category": {
+                    "type": "keyword",
+                },
+            }
+            self.search_params["id_fields"] = ["slug", "date_created"]
+            self.search_params["fields"] = search_fields
+            self.search_params['site_url'] = self.SITE_URL
+            filtered_routes = itertools.filterfalse(lambda x: x.no_index, self.routes)
+            self.search(
+                search_client=self.search_client,
+                pages=filtered_routes,
+                **self.search_params,
+            )
+
