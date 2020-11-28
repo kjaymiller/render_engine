@@ -1,5 +1,6 @@
 from urllib.parse import urlparse
 
+
 def add_optimization(img_url, transform):
     """Given a url inject transforms"""
     url = urlparse(img_url)

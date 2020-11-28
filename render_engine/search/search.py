@@ -1,6 +1,7 @@
-from ..page import Page
-import typing
 import hashlib
+import typing
+
+from ..page import Page
 
 
 def _id_hash(page: Page, *id_fields) -> str:

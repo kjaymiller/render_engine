@@ -1,5 +1,7 @@
-from .search import _build_index
 from elasticsearch.helpers import bulk
+
+from .search import _build_index
+
 
 def elasticsearch(
     _,  # called inside a class

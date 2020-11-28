@@ -1,5 +1,7 @@
-from .search import _build_index
 import elastic_app_search as app_search
+
+from .search import _build_index
+
 
 def elastic_app_search(
     _,

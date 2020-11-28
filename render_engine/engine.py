@@ -1,15 +1,11 @@
 import logging
+import typing
 from pathlib import Path
-from typing import (
-        Any,
-        Optional,
-        Sequence,
-        Type,
-        Dict,
-        )
+from typing import Any, Dict, Optional, Sequence, Type
+
 import jinja2
 from jinja2 import FileSystemLoader, select_autoescape
-from more-itertools import flatten
+from more_itertools import flatten
 
 from .page import Page
 
@@ -45,7 +41,7 @@ class Engine:
 
     def render_collection(
             self,
-            collection: typing.Type[Collection],
+            collection,
     ) -> None:
         """iterate through pages in the collection and generate HTML for each page"""
 

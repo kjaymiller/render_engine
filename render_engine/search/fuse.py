@@ -1,6 +1,8 @@
-from .search import _build_index
 import json
 import typing
+
+from .search import _build_index
+
 
 def fuse(search: typing.Dict, filepath: str):
     """Build a JSON doc of your pages"""

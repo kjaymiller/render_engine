@@ -1,5 +1,3 @@
-from .content_parser import parse_content
-from slugify import slugify
 import logging
 import typing
 from pathlib import Path
@@ -7,6 +5,9 @@ from typing import List
 
 from jinja2 import Markup
 from markdown2 import markdown
+from slugify import slugify
+
+from .content_parser import parse_content
 
 # some attributes will need to be protected from manipulation
 

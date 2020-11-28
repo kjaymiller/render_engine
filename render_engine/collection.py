@@ -1,5 +1,4 @@
 import collections
-from slugify import slugify
 import itertools
 import logging
 import operator
@@ -7,6 +6,7 @@ import typing
 from pathlib import Path
 
 import more_itertools
+from slugify import slugify
 
 from .feeds import RSSFeed
 from .page import Page
@@ -188,7 +188,7 @@ class Collection:
 
         return subcollections
 
-    def register_feed(self, feed, collection: Collection) -> None:
+    def register_feed(self, feed, collection) -> None:
         """Create a Page object that is an RSS feed and add it to self.routes
 
         Parameters
